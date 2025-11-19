@@ -1,4 +1,150 @@
-// -------------------------- 实验流程（Timeline） --------------------------
+我来为您逐个输出完整的文件内容：
+1. 01_config.js
+javascript// -------------------------- 全局配置（所有文件可共用） --------------------------
+const EXPERIMENT_CONFIG = {
+    imageFolder: "artpic/", // 图片文件夹相对路径（根目录下的artpic）
+    totalTrials: 60,       // 总试次数（100张图）
+    fixationDuration: 1000, // 注视点时长（ms）
+    blankDuration: 500,     // 空屏时长（ms）
+    bgColor: "#626262",     // 背景色
+    textColor: "#000000"    // 文本色
+};
+
+// -------------------------- 生成"图片序号-类型"映射（复现MATLAB逻辑） --------------------------
+// 规则：序号1-30=先验（type:1），31-60=随机（type:2）
+let IMAGE_LIST = [];
+for (let i = 1; i <= EXPERIMENT_CONFIG.totalTrials; i++) {
+    IMAGE_LIST.push({
+        imageId: i,                          // 图片序号
+        imageType: i <= 30 ? 1 : 2,          // 1=先验，2=随机
+        imageUrl: EXPERIMENT_CONFIG.imageFolder + i + ".png", // 图片完整相对路径
+        imageViewTime: 0,                    // 图片观看时长（后续记录）
+        beautyScore: 0,                      // 美观度评分（后续记录）
+    });
+}
+
+// 注意：图片顺序将在 04_main.js 中初始化 jsPsych 后打乱
+
+// -------------------------- 全局数据存储（所有文件可修改） --------------------------
+const GLOBAL_DATA = {
+    subjectName: "",        // 被试姓名（录入后赋值）
+    subjectGender: "",      // 被试性别（录入后赋值）
+    experimentLog: [        // 实验数据日志（最终导出为TXT）
+        "Subject Info: To be entered",
+        "ImageID\tImageType\tBeautyRating(0-1)\tViewingTime(ms)"
+    ]
+};
+2. 02_customPlugin.js
+javascript// -------------------------- 自定义评分插件：custom-rating --------------------------
+// 功能：提供"左标签-控制杆-右标签"的评分界面,支持鼠标拖动标记
+class CustomRatingPlugin {
+    // 插件参数定义（外部调用时需传入的参数）
+    static info = {
+        name: "custom-rating",
+        parameters: {
+            labelLeft: { 
+                type: 'string',
+                default: "非常差"
+            },
+            labelRight: { 
+                type: 'string',
+                default: "非常好"
+            },
+            prompt: { 
+                type: 'string',
+                default: "请评价"
+            }
+        }
+    };
+
+    constructor(jsPsych) {
+        this.jsPsych = jsPsych;
+    }
+
+    trial(display_element, trial) {
+        // 1. 构建评分界面HTML - 使用CSS类
+        const ratingHtml = `
+            <div style="text-align: center; margin-top: 50px;">
+                <h2 class="rating-prompt">${trial.prompt}</h2>
+                <div class="rating-slider" id="js-rating-slider">
+                    <div class="slider-marker" id="js-slider-marker" style="left: 50%;"></div>
+                </div>
+                <div class="rating-labels">
+                    <span>${trial.labelLeft}</span>
+                    <span>${trial.labelRight}</span>
+                </div>
+                <div class="confirm-button" id="js-confirm-btn">Confirm</div>
+            </div>
+        `;
+        display_element.innerHTML = ratingHtml;
+
+        // 2. 初始化变量
+        const slider = document.getElementById("js-rating-slider");
+        const marker = document.getElementById("js-slider-marker");
+        const confirmBtn = document.getElementById("js-confirm-btn");
+        let isDragging = false;
+        let ratingValue = 0.5;
+
+        // 更新标记位置的函数
+        const updateMarkerPosition = (clientX) => {
+            const sliderRect = slider.getBoundingClientRect();
+            let markerX = clientX - sliderRect.left;
+            markerX = Math.max(0, Math.min(markerX, sliderRect.width));
+            ratingValue = markerX / sliderRect.width;
+            marker.style.left = `${markerX}px`;
+        };
+
+        // 3. 鼠标事件监听：开始拖动（按下标记）
+        const handleMouseDown = (e) => {
+            isDragging = true;
+            e.preventDefault();
+        };
+
+        // 4. 鼠标事件监听：拖动标记（移动鼠标）
+        const handleMouseMove = (e) => {
+            if (isDragging) {
+                updateMarkerPosition(e.clientX);
+            }
+        };
+
+        // 5. 鼠标事件监听：停止拖动（松开鼠标）
+        const handleMouseUp = () => {
+            if (isDragging) isDragging = false;
+        };
+
+        // 6. 点击滑动条移动标记
+        const handleSliderClick = (e) => {
+            if (e.target === slider) {  // 确保点击的是滑动条而不是标记
+                updateMarkerPosition(e.clientX);
+            }
+        };
+
+        // 添加事件监听
+        marker.addEventListener("mousedown", handleMouseDown);
+        slider.addEventListener("click", handleSliderClick);  // 点击滑动条
+        document.addEventListener("mousemove", handleMouseMove);
+        document.addEventListener("mouseup", handleMouseUp);
+
+        // 7. 点击确定按钮：结束评分，返回数据
+        confirmBtn.addEventListener("click", () => {
+            // 清理事件监听
+            marker.removeEventListener("mousedown", handleMouseDown);
+            slider.removeEventListener("click", handleSliderClick);
+            document.removeEventListener("mousemove", handleMouseMove);
+            document.removeEventListener("mouseup", handleMouseUp);
+            
+            // 清空当前界面
+            display_element.innerHTML = "";
+            
+            // 使用全局 jsPsych 变量
+            jsPsych.finishTrial({
+                rating: parseFloat(ratingValue.toFixed(4))
+            });
+        });
+    }
+}
+3. 03_timeline.js
+javascript// -------------------------- 实验流程（Timeline） --------------------------
 // 使用函数构建timeline，确保所有插件已加载
 
 // 简化的数据下载功能 - 只支持TXT格式
@@ -58,7 +204,7 @@ function showDataForCopy(dataText, fileName) {
         newWindow.document.write(`
             <html>
                 <head>
-                    <title>实验数据 - ${fileName}</title>
+                    <title>Experimental Data - ${fileName}</title>
                     <style>
                         body { font-family: Arial, sans-serif; margin: 20px; }
                         textarea { width: 100%; height: 70%; font-family: monospace; }
@@ -67,10 +213,10 @@ function showDataForCopy(dataText, fileName) {
                     </style>
                 </head>
                 <body>
-                    <h2>实验数据 (${fileName})</h2>
-                    <p>由于自动下载失败，请手动复制以下数据并保存为 TXT 文件：</p>
-                    <button class="copy-btn" onclick="copyToClipboard()">复制数据</button>
-                    <button class="copy-btn" onclick="selectAll()">全选</button>
+                    <h2>Experimental Data (${fileName})</h2>
+                    <p>Due to automatic download failure, please manually copy the following data and save as TXT file:</p>
+                    <button class="copy-btn" onclick="copyToClipboard()">Copy Data</button>
+                    <button class="copy-btn" onclick="selectAll()">Select All</button>
                     <br>
                     <textarea id="dataText" readonly>${dataText}</textarea>
                     <script>
@@ -78,7 +224,7 @@ function showDataForCopy(dataText, fileName) {
                             const textarea = document.getElementById('dataText');
                             textarea.select();
                             document.execCommand('copy');
-                            alert('数据已复制到剪贴板！');
+                            alert('Data copied to clipboard!');
                         }
                         function selectAll() {
                             document.getElementById('dataText').select();
@@ -87,11 +233,11 @@ function showDataForCopy(dataText, fileName) {
                 </body>
             </html>
         `);
-        console.log("数据已在新窗口中显示供复制");
+        console.log("Data displayed in new window for copying");
     } else {
         // 如果无法打开新窗口，在当前页面显示
-        alert(`下载失败！请手动复制以下数据并保存为 TXT 文件：\n\n${dataText.substring(0, 500)}...\n\n完整数据请查看控制台。`);
-        console.log("完整实验数据：", dataText);
+        alert(`Download failed! Please manually copy the following data and save as TXT file:\n\n${dataText.substring(0, 500)}...\n\nComplete data can be found in console.`);
+        console.log("Complete experimental data:", dataText);
     }
 }
 
@@ -121,9 +267,9 @@ function checkBackupData() {
             
             if (hoursDiff < 24) { // 24小时内的备份
                 const trialCount = backupData.experimentLog.length - 1;
-                if (confirm(`发现 ${new Date(backupData.timestamp).toLocaleString()} 的实验数据备份（${trialCount} 个试次），是否下载？`)) {
+                if (confirm(`Found experimental data backup from ${new Date(backupData.timestamp).toLocaleString()} (${trialCount} trials). Download now?`)) {
                     const dataText = backupData.experimentLog.join("\n");
-                    const fileName = `${backupData.subjectName}_备份数据_${backupData.timestamp.slice(0,10)}.txt`;
+                    const fileName = `${backupData.subjectName}_BackupData_${backupData.timestamp.slice(0,10)}.txt`;
                     downloadData(dataText, fileName);
                     localStorage.removeItem('experiment_backup');
                 }
@@ -145,29 +291,29 @@ function buildTimeline() {
         type: jsPsychHtmlKeyboardResponse,
         stimulus: `
             <div class="welcome-container">
-                <h2>欢迎参与实验！</h2>
+                <h2>Welcome to participate in the experiment!</h2>
                 <div style="margin-top: 50px;">
-                    <p style="font-size: 18px; margin-bottom: 15px;">请输入您的姓名（拼音）：</p>
-                    <input type="text" id="subject-name" placeholder="例如：zhangsan" style="padding: 8px 12px; font-size: 16px; border: 2px solid #ddd; border-radius: 5px; width: 200px;">
+                    <p style="font-size: 18px; margin-bottom: 15px;">Please enter your name:</p>
+                    <input type="text" id="subject-name" placeholder="e.g., John Smith" style="padding: 8px 12px; font-size: 16px; border: 2px solid #ddd; border-radius: 5px; width: 200px;">
                 </div>
                 <div style="margin-top: 30px;">
-                    <p style="font-size: 18px; margin-bottom: 15px;">请选择您的性别：</p>
+                    <p style="font-size: 18px; margin-bottom: 15px;">Please select your gender:</p>
                     <div style="display: flex; justify-content: center; gap: 30px;">
                         <label style="display: flex; align-items: center; cursor: pointer; font-size: 16px;">
-                            <input type="radio" name="gender" value="男" style="margin-right: 8px; transform: scale(1.2);">
-                            男
+                            <input type="radio" name="gender" value="Male" style="margin-right: 8px; transform: scale(1.2);">
+                            Male
                         </label>
                         <label style="display: flex; align-items: center; cursor: pointer; font-size: 16px;">
-                            <input type="radio" name="gender" value="女" style="margin-right: 8px; transform: scale(1.2);">
-                            女
+                            <input type="radio" name="gender" value="Female" style="margin-right: 8px; transform: scale(1.2);">
+                            Female
                         </label>
                         <label style="display: flex; align-items: center; cursor: pointer; font-size: 16px;">
-                            <input type="radio" name="gender" value="不愿透露" style="margin-right: 8px; transform: scale(1.2);">
-                            不愿透露
+                            <input type="radio" name="gender" value="Prefer not to say" style="margin-right: 8px; transform: scale(1.2);">
+                            Prefer not to say
                         </label>
                     </div>
                 </div>
-                <p style="margin-top: 40px; font-size: 16px; color: #6c757d;">输入完成后按 <kbd>空格键</kbd> 继续</p>
+                <p style="margin-top: 40px; font-size: 16px; color: #6c757d;">Press the <kbd>Spacebar</kbd> to continue after entering your information.</p>
             </div>
         `,
         choices: [" "],
@@ -188,13 +334,13 @@ function buildTimeline() {
         },
         on_finish: () => {
             if (!GLOBAL_DATA.subjectName) {
-                GLOBAL_DATA.subjectName = `匿名被试_${new Date().getTime()}`;
+                GLOBAL_DATA.subjectName = `Anonymous_${new Date().getTime()}`;
             }
             if (!GLOBAL_DATA.subjectGender) {
-                GLOBAL_DATA.subjectGender = "未选择";
+                GLOBAL_DATA.subjectGender = "Not selected";
             }
             // 修正：将姓名和性别信息保存到第一行
-            GLOBAL_DATA.experimentLog[0] = `被试姓名：${GLOBAL_DATA.subjectName}\t被试性别：${GLOBAL_DATA.subjectGender}`;
+            GLOBAL_DATA.experimentLog[0] = `Subject Name: ${GLOBAL_DATA.subjectName}\tGender: ${GLOBAL_DATA.subjectGender}`;
             saveBackupData();
         }
     };
@@ -206,7 +352,7 @@ function buildTimeline() {
         stimulus: `
             <div style="text-align: center; margin-top: 60px;">
                 <img src="instruction.png" style="max-width: 900px; width: 100%; height: auto; border-radius: 15px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);">
-                <p style="margin-top: 32px; font-size: 18px; color: #007cba;">按 <kbd>空格键</kbd> 开始实验</p>
+                <p style="margin-top: 32px; font-size: 18px; color: #007cba;">Press the <kbd>Spacebar</kbd> to start the experiment.</p>
             </div>
         `,
         choices: [" "],
@@ -222,8 +368,8 @@ function buildTimeline() {
         type: jsPsychHtmlKeyboardResponse,
         stimulus: `
             <div style="text-align: center; margin-top: 200px; color: #ffffff;">
-                <h2 style="font-size: 24px; color: #ffffff;">实验即将开始</h2>
-                <p style="margin-top: 20px; font-size: 18px; color: #e5e7eb;">请保持注意力集中</p>
+                <h2 style="font-size: 24px; color: #ffffff;">The experiment is about to start</h2>
+                <p style="margin-top: 20px; font-size: 18px; color: #e5e7eb;">Please stay focused</p>
             </div>
         `,
         choices: "NO_KEYS",
@@ -234,7 +380,7 @@ function buildTimeline() {
     };
     timeline.push(startExperimentTransition);
 
-    // -------------------------- 环节3：60个实验试次（循环生成） --------------------------
+    // -------------------------- 环节3：100个实验试次（循环生成） --------------------------
     for (let i = 0; i < IMAGE_LIST.length; i++) {
         const currentImage = IMAGE_LIST[i];
 
@@ -261,7 +407,7 @@ function buildTimeline() {
             type: jsPsychImageKeyboardResponse,
             stimulus: currentImage.imageUrl,
             choices: "NO_KEYS",  // 初始禁用所有按键
-            prompt: `<div id="image-prompt" style="text-align: center; margin-top: 20px; color: #ffffff; font-size: 16px; visibility: hidden;">按 <kbd style="background: #ffffff; color: #333;">空格键</kbd> 开始评价</div>`,
+            prompt: `<div id="image-prompt" style="text-align: center; margin-top: 20px; color: #ffffff; font-size: 16px; visibility: hidden;">Press <kbd style="background: #ffffff; color: #333;">Space</kbd> to start evaluation</div>`,
             stimulus_height: 500,
             stimulus_width: 800,
             trial_duration: 3000,  // 3秒后自动结束此试次
@@ -273,7 +419,7 @@ function buildTimeline() {
             type: jsPsychImageKeyboardResponse,
             stimulus: currentImage.imageUrl,
             choices: [" "],  // 允许按空格
-            prompt: `<div style="text-align: center; margin-top: 20px; color: #ffffff; font-size: 16px;">按 <kbd style="background: #ffffff; color: #333;">空格键</kbd> 开始评价</div>`,
+            prompt: `<div style="text-align: center; margin-top: 20px; color: #ffffff; font-size: 16px;">Press <kbd style="background: #ffffff; color: #333;">Space</kbd> to start evaluation</div>`,
             stimulus_height: 500,
             stimulus_width: 800,
             post_trial_gap: 0,
@@ -282,16 +428,16 @@ function buildTimeline() {
             }
         };
 
-        // 子环节4：维度1 - 美观度评分
+        // 子环节4： 美观度评分
         const beautyRatingTrial = {
             type: CustomRatingPlugin,
-            labelLeft: "非常丑",
-            labelRight: "非常美",
-            prompt: "请评价图片的美观度",
+            labelLeft: "Very ugly",
+            labelRight: "Very beautiful",
+            prompt: "Please evaluate the aesthetic quality of the image",
             post_trial_gap: 300,
             on_finish: (data) => {
                 currentImage.beautyScore = data.rating;
-                // ✅ 记录本次试次的完整数据
+                // 记录本次试次的完整数据
                 GLOBAL_DATA.experimentLog.push(
                     `${currentImage.imageId}\t${currentImage.imageType}\t${currentImage.beautyScore}\t${currentImage.imageViewTime}`
                 );
@@ -309,22 +455,22 @@ function buildTimeline() {
         type: jsPsychHtmlKeyboardResponse,
         stimulus: `
             <div style="text-align: center; padding: 50px; background-color: #ffffff; border-radius: 15px; margin: 100px auto; max-width: 600px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1); border: 1px solid #e9ecef;">
-                <h2 style="font-size: 28px; color: #28a745; margin-bottom: 30px;">✓ 实验已完成！</h2>
-                <p style="font-size: 18px; margin-bottom: 40px; color: #495057;">感谢您的参与！</p>
-                <p style="font-size: 16px; margin-bottom: 30px; color: #6c757d;">请点击下方按钮下载您的实验数据</p>
+                <h2 style="font-size: 28px; color: #28a745; margin-bottom: 30px;">✓ Experiment completed!</h2>
+                <p style="font-size: 18px; margin-bottom: 40px; color: #495057;">Thank you for your participation!</p>
+                <p style="font-size: 16px; margin-bottom: 30px; color: #6c757d;">Please click the button below to download your experimental data</p>
                 <button id="js-download-btn" style="background: #007cba; color: white; padding: 15px 30px; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; margin: 10px;">
-                    下载实验数据
+                    Download Experimental Data
                 </button>
                 <p style="font-size: 14px; margin-top: 20px; color: #9ca3af;">
-                    数据将以 TXT 格式保存到本地<br>
-                    如下载失败，数据将在新窗口中显示供复制
+                    Data will be saved locally in TXT format<br>
+                    If download fails, data will be displayed in a new window for copying
                 </p>
                 <div id="download-status" style="margin-top: 15px; font-size: 14px;"></div>
             </div>
         `,
         choices: "NO_KEYS",
         on_load: () => {
-            document.body.style.backgroundColor = "#f8f9fa"; // ✅ 恢复白色背景
+            document.body.style.backgroundColor = "#f8f9fa"; // 恢复白色背景
             
             setTimeout(() => {
                 const statusDiv = document.getElementById("download-status");
@@ -332,15 +478,15 @@ function buildTimeline() {
                 document.getElementById("js-download-btn").addEventListener("click", () => {
                     const dataText = GLOBAL_DATA.experimentLog.join("\n");
                     const timestamp = new Date().toLocaleString().replace(/[:/ ]/g, "-");
-                    const fileName = `${GLOBAL_DATA.subjectName}_实验数据_3B_${timestamp}.txt`;
+                    const fileName = `${GLOBAL_DATA.subjectName}_ExperimentData_${timestamp}.txt`;
                     
                     if (downloadData(dataText, fileName)) {
-                        statusDiv.textContent = "✓ 数据下载成功！";
+                        statusDiv.textContent = "✓ Data download successful!";
                         statusDiv.style.color = "#28a745";
                         // 清除本地备份
                         localStorage.removeItem('experiment_backup');
                     } else {
-                        statusDiv.textContent = "⚠ 自动下载失败，已在新窗口显示数据供复制";
+                        statusDiv.textContent = "⚠ Auto-download failed, data displayed in new window for copying";
                         statusDiv.style.color = "#ffc107";
                     }
                 });
@@ -360,7 +506,7 @@ document.addEventListener('keydown', function(event) {
         if (GLOBAL_DATA.experimentLog.length > 1) {
             const dataText = GLOBAL_DATA.experimentLog.join("\n");
             const timestamp = new Date().toLocaleString().replace(/[:/ ]/g, "-");
-            const fileName = `${GLOBAL_DATA.subjectName}_紧急备份_${timestamp}.txt`;
+            const fileName = `${GLOBAL_DATA.subjectName}_EmergencyBackup_${timestamp}.txt`;
             downloadData(dataText, fileName);
         }
     }
