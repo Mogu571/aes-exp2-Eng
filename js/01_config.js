@@ -23,12 +23,12 @@ for (let i = 1; i <= EXPERIMENT_CONFIG.totalTrials; i++) {
 
 // 图片顺序将在 04_main.js 中初始化 jsPsych 后打乱
 
-// -------------------------- 全局数据存储 --------------------------
+// -------------------------- 全局数据存储（所有文件可修改） --------------------------
 const GLOBAL_DATA = {
     subjectName: "",        // 被试姓名（录入后赋值）
     subjectGender: "",      // 被试性别（录入后赋值）
     experimentLog: [        // 实验数据日志（最终导出为TXT）
-        "被试信息：待录入",  // 包含姓名和性别信息
-        "图片序号\t图片类型\t美观度(0-1)\t观看时长(ms)"  // 表头
+        "Subject Info: To be entered",
+        "ImageID\tImageType\tBeautyRating(0-1)\tViewingTime(ms)"
     ]
 };
