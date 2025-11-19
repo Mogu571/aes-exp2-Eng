@@ -144,10 +144,10 @@ function buildTimeline() {
         type: jsPsychHtmlKeyboardResponse,
         stimulus: `
             <div class="welcome-container">
-                <h2>欢迎参与实验！</h2>
-                <p style="margin-top: 50px; font-size: 18px;">请输入您的姓名（拼音）：</p>
-                <input type="text" id="subject-name" placeholder="例如：zhangsan">
-                <p style="margin-top: 30px; font-size: 16px; color: #6c757d;">输入完成后按 <kbd>空格键</kbd> 继续</p>
+                <h2>Welcome to participate in the experiment！</h2>
+                <p style="margin-top: 50px; font-size: 18px;">Please enter your name：</p>
+                <input type="text" id="subject-name" placeholder="Monica">
+                <p style="margin-top: 30px; font-size: 16px; color: #6c757d;">Press the <kbd>Spacebar</kbd> to continue after entering your information.</p>
             </div>
         `,
         choices: [" "],
@@ -174,7 +174,7 @@ function buildTimeline() {
         stimulus: `
             <div style="text-align: center; margin-top: 60px;">
                 <img src="instruction.png" style="max-width: 900px; width: 100%; height: auto; border-radius: 15px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);">
-                <p style="margin-top: 32px; font-size: 18px; color: #007cba;">按 <kbd>空格键</kbd> 开始实验</p>
+                <p style="margin-top: 32px; font-size: 18px; color: #007cba;">Press the <kbd>Spacebar</kbd> to start the experiment.</p>
             </div>
         `,
         choices: [" "],
@@ -190,8 +190,8 @@ function buildTimeline() {
         type: jsPsychHtmlKeyboardResponse,
         stimulus: `
             <div style="text-align: center; margin-top: 200px; color: #ffffff;">
-                <h2 style="font-size: 24px; color: #ffffff;">实验即将开始</h2>
-                <p style="margin-top: 20px; font-size: 18px; color: #e5e7eb;">请保持注意力集中</p>
+                <h2 style="font-size: 24px; color: #ffffff;">The experiment is about to start.</h2>
+                <p style="margin-top: 20px; font-size: 18px; color: #e5e7eb;">Please stay focused.</p>
             </div>
         `,
         choices: "NO_KEYS",
@@ -202,7 +202,7 @@ function buildTimeline() {
     };
     timeline.push(startExperimentTransition);
 
-    // -------------------------- 环节3：60个实验试次（循环生成） --------------------------
+    // -------------------------- 环节3：100个实验试次（循环生成） --------------------------
     for (let i = 0; i < IMAGE_LIST.length; i++) {
         const currentImage = IMAGE_LIST[i];
 
@@ -253,9 +253,9 @@ function buildTimeline() {
         // 子环节4：维度1 - 美观度评分
         const beautyRatingTrial = {
             type: CustomRatingPlugin,
-            labelLeft: "非常丑",
-            labelRight: "非常美",
-            prompt: "请评价图片的美观度",
+            labelLeft: "very ugly(0)",
+            labelRight: "very beautiful(1)",
+            prompt: "Please evaluate how aesthetically pleasing the image is.",
             post_trial_gap: 300,
             on_finish: (data) => {
                 currentImage.beautyScore = data.rating;
@@ -277,15 +277,15 @@ function buildTimeline() {
         type: jsPsychHtmlKeyboardResponse,
         stimulus: `
             <div style="text-align: center; padding: 50px; background-color: #ffffff; border-radius: 15px; margin: 100px auto; max-width: 600px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1); border: 1px solid #e9ecef;">
-                <h2 style="font-size: 28px; color: #28a745; margin-bottom: 30px;">✓ 实验已完成！</h2>
-                <p style="font-size: 18px; margin-bottom: 40px; color: #495057;">感谢您的参与！</p>
-                <p style="font-size: 16px; margin-bottom: 30px; color: #6c757d;">请点击下方按钮下载您的实验数据</p>
+                <h2 style="font-size: 28px; color: #28a745; margin-bottom: 30px;">✓ The experiment has been completed!</h2>
+                <p style="font-size: 18px; margin-bottom: 40px; color: #495057;">Thank you for your participation! </p>
+                <p style="font-size: 16px; margin-bottom: 30px; color: #6c757d;">Please click the button below to download your experimental data.</p>
                 <button id="js-download-btn" style="background: #007cba; color: white; padding: 15px 30px; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; margin: 10px;">
-                    下载实验数据
+                    Download Experimental Data
                 </button>
                 <p style="font-size: 14px; margin-top: 20px; color: #9ca3af;">
-                    数据将以 TXT 格式保存到本地<br>
-                    如下载失败，数据将在新窗口中显示供复制
+                    The data will be saved locally in TXT format.<br>
+                    If the download fails, the data will be displayed in a new window for copying.
                 </p>
                 <div id="download-status" style="margin-top: 15px; font-size: 14px;"></div>
             </div>
@@ -303,12 +303,12 @@ function buildTimeline() {
                     const fileName = `${GLOBAL_DATA.subjectName}_实验数据_3B_${timestamp}.txt`;
                     
                     if (downloadData(dataText, fileName)) {
-                        statusDiv.textContent = "✓ 数据下载成功！";
+                        statusDiv.textContent = "✓ Data download successful!";
                         statusDiv.style.color = "#28a745";
                         // 清除本地备份
                         localStorage.removeItem('experiment_backup');
                     } else {
-                        statusDiv.textContent = "⚠ 自动下载失败，已在新窗口显示数据供复制";
+                        statusDiv.textContent = "⚠ Auto-download failed. Data shown in a new window for copying.";
                         statusDiv.style.color = "#ffc107";
                     }
                 });
