@@ -36,7 +36,7 @@ class CustomRatingPlugin {
                     <span>${trial.labelLeft}</span>
                     <span>${trial.labelRight}</span>
                 </div>
-                <div class="confirm-button" id="js-confirm-btn">确定</div>
+                <div class="confirm-button" id="js-confirm-btn">Confirm</div>
             </div>
         `;
         display_element.innerHTML = ratingHtml;
