@@ -5,7 +5,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // 检查 IMAGE_LIST 是否正确初始化
     if (!IMAGE_LIST || IMAGE_LIST.length === 0) {
         console.error("IMAGE_LIST 未正确初始化！");
-        alert("实验材料加载失败，请刷新页面重试。");
+        alert("Failed to load experimental materials. Please refresh the page and try again.");
         return;
     }
 
@@ -32,10 +32,10 @@ document.addEventListener("DOMContentLoaded", () => {
     const preloadTrial = {
         type: jsPsychPreload,
         images: imagesToPreload,
-        message: '正在加载实验材料，请稍候...',
+        message: 'Loading experimental materials...',
         show_progress_bar: true,
         continue_after_error: false,
-        error_message: ' 部分图片加载失败，请检查网络连接后刷新页面重试。',
+        error_message: ' Some images failed to load. Please check your network connection, then refresh the page and try again.',
         on_success: () => {
             console.log(' 所有图片预加载完成！');
         },
