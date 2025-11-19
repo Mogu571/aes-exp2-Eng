@@ -100,6 +100,7 @@ function saveBackupData() {
     try {
         const backupData = {
             subjectName: GLOBAL_DATA.subjectName,
+            subjectGender: GLOBAL_DATA.subjectGender,
             experimentLog: GLOBAL_DATA.experimentLog,
             timestamp: new Date().toISOString()
         };
@@ -139,15 +140,34 @@ function buildTimeline() {
     
     const timeline = [];
 
-    // -------------------------- 环节1：被试姓名录入 --------------------------
+    // -------------------------- 环节1：被试姓名和性别录入 --------------------------
     const nameTrial = {
         type: jsPsychHtmlKeyboardResponse,
         stimulus: `
             <div class="welcome-container">
-                <h2>Welcome to participate in the experiment！</h2>
-                <p style="margin-top: 50px; font-size: 18px;">Please enter your name：</p>
-                <input type="text" id="subject-name" placeholder="Monica">
-                <p style="margin-top: 30px; font-size: 16px; color: #6c757d;">Press the <kbd>Spacebar</kbd> to continue after entering your information.</p>
+                <h2>欢迎参与实验！</h2>
+                <div style="margin-top: 50px;">
+                    <p style="font-size: 18px; margin-bottom: 15px;">请输入您的姓名（拼音）：</p>
+                    <input type="text" id="subject-name" placeholder="例如：zhangsan" style="padding: 8px 12px; font-size: 16px; border: 2px solid #ddd; border-radius: 5px; width: 200px;">
+                </div>
+                <div style="margin-top: 30px;">
+                    <p style="font-size: 18px; margin-bottom: 15px;">请选择您的性别：</p>
+                    <div style="display: flex; justify-content: center; gap: 30px;">
+                        <label style="display: flex; align-items: center; cursor: pointer; font-size: 16px;">
+                            <input type="radio" name="gender" value="男" style="margin-right: 8px; transform: scale(1.2);">
+                            男
+                        </label>
+                        <label style="display: flex; align-items: center; cursor: pointer; font-size: 16px;">
+                            <input type="radio" name="gender" value="女" style="margin-right: 8px; transform: scale(1.2);">
+                            女
+                        </label>
+                        <label style="display: flex; align-items: center; cursor: pointer; font-size: 16px;">
+                            <input type="radio" name="gender" value="不愿透露" style="margin-right: 8px; transform: scale(1.2);">
+                            不愿透露
+                        </label>
+                    </div>
+                </div>
+                <p style="margin-top: 40px; font-size: 16px; color: #6c757d;">输入完成后按 <kbd>空格键</kbd> 继续</p>
             </div>
         `,
         choices: [" "],
@@ -157,12 +177,24 @@ function buildTimeline() {
             nameInput.addEventListener("input", (e) => {
                 GLOBAL_DATA.subjectName = e.target.value.trim();
             });
+            
+            // 添加性别选择监听
+            const genderInputs = document.querySelectorAll('input[name="gender"]');
+            genderInputs.forEach(input => {
+                input.addEventListener("change", (e) => {
+                    GLOBAL_DATA.subjectGender = e.target.value;
+                });
+            });
         },
         on_finish: () => {
             if (!GLOBAL_DATA.subjectName) {
                 GLOBAL_DATA.subjectName = `匿名被试_${new Date().getTime()}`;
             }
-            GLOBAL_DATA.experimentLog[0] = `被试姓名：${GLOBAL_DATA.subjectName}`;
+            if (!GLOBAL_DATA.subjectGender) {
+                GLOBAL_DATA.subjectGender = "未选择";
+            }
+            // 修正：将姓名和性别信息保存到第一行
+            GLOBAL_DATA.experimentLog[0] = `被试姓名：${GLOBAL_DATA.subjectName}\t被试性别：${GLOBAL_DATA.subjectGender}`;
             saveBackupData();
         }
     };
@@ -174,7 +206,7 @@ function buildTimeline() {
         stimulus: `
             <div style="text-align: center; margin-top: 60px;">
                 <img src="instruction.png" style="max-width: 900px; width: 100%; height: auto; border-radius: 15px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);">
-                <p style="margin-top: 32px; font-size: 18px; color: #007cba;">Press the <kbd>Spacebar</kbd> to start the experiment.</p>
+                <p style="margin-top: 32px; font-size: 18px; color: #007cba;">按 <kbd>空格键</kbd> 开始实验</p>
             </div>
         `,
         choices: [" "],
@@ -190,8 +222,8 @@ function buildTimeline() {
         type: jsPsychHtmlKeyboardResponse,
         stimulus: `
             <div style="text-align: center; margin-top: 200px; color: #ffffff;">
-                <h2 style="font-size: 24px; color: #ffffff;">The experiment is about to start.</h2>
-                <p style="margin-top: 20px; font-size: 18px; color: #e5e7eb;">Please stay focused.</p>
+                <h2 style="font-size: 24px; color: #ffffff;">实验即将开始</h2>
+                <p style="margin-top: 20px; font-size: 18px; color: #e5e7eb;">请保持注意力集中</p>
             </div>
         `,
         choices: "NO_KEYS",
@@ -202,7 +234,7 @@ function buildTimeline() {
     };
     timeline.push(startExperimentTransition);
 
-    // -------------------------- 环节3：100个实验试次（循环生成） --------------------------
+    // -------------------------- 环节3：60个实验试次（循环生成） --------------------------
     for (let i = 0; i < IMAGE_LIST.length; i++) {
         const currentImage = IMAGE_LIST[i];
 
@@ -229,7 +261,7 @@ function buildTimeline() {
             type: jsPsychImageKeyboardResponse,
             stimulus: currentImage.imageUrl,
             choices: "NO_KEYS",  // 初始禁用所有按键
-            prompt: `<div id="image-prompt" style="text-align: center; margin-top: 20px; color: #ffffff; font-size: 16px; visibility: hidden;">Press <kbd style="background: #ffffff; color: #333;">Space</kbd> to start the evaluation</div>`,
+            prompt: `<div id="image-prompt" style="text-align: center; margin-top: 20px; color: #ffffff; font-size: 16px; visibility: hidden;">按 <kbd style="background: #ffffff; color: #333;">空格键</kbd> 开始评价</div>`,
             stimulus_height: 500,
             stimulus_width: 800,
             trial_duration: 3000,  // 3秒后自动结束此试次
@@ -253,9 +285,9 @@ function buildTimeline() {
         // 子环节4：维度1 - 美观度评分
         const beautyRatingTrial = {
             type: CustomRatingPlugin,
-            labelLeft: "very ugly(0)",
-            labelRight: "very beautiful(1)",
-            prompt: "Please evaluate how aesthetically pleasing the image is.",
+            labelLeft: "非常丑",
+            labelRight: "非常美",
+            prompt: "请评价图片的美观度",
             post_trial_gap: 300,
             on_finish: (data) => {
                 currentImage.beautyScore = data.rating;
@@ -277,15 +309,15 @@ function buildTimeline() {
         type: jsPsychHtmlKeyboardResponse,
         stimulus: `
             <div style="text-align: center; padding: 50px; background-color: #ffffff; border-radius: 15px; margin: 100px auto; max-width: 600px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1); border: 1px solid #e9ecef;">
-                <h2 style="font-size: 28px; color: #28a745; margin-bottom: 30px;">✓ The experiment has been completed!</h2>
-                <p style="font-size: 18px; margin-bottom: 40px; color: #495057;">Thank you for your participation! </p>
-                <p style="font-size: 16px; margin-bottom: 30px; color: #6c757d;">Please click the button below to download your experimental data.</p>
+                <h2 style="font-size: 28px; color: #28a745; margin-bottom: 30px;">✓ 实验已完成！</h2>
+                <p style="font-size: 18px; margin-bottom: 40px; color: #495057;">感谢您的参与！</p>
+                <p style="font-size: 16px; margin-bottom: 30px; color: #6c757d;">请点击下方按钮下载您的实验数据</p>
                 <button id="js-download-btn" style="background: #007cba; color: white; padding: 15px 30px; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; margin: 10px;">
-                    Download Experimental Data
+                    下载实验数据
                 </button>
                 <p style="font-size: 14px; margin-top: 20px; color: #9ca3af;">
-                    The data will be saved locally in TXT format.<br>
-                    If the download fails, the data will be displayed in a new window for copying.
+                    数据将以 TXT 格式保存到本地<br>
+                    如下载失败，数据将在新窗口中显示供复制
                 </p>
                 <div id="download-status" style="margin-top: 15px; font-size: 14px;"></div>
             </div>
@@ -300,15 +332,15 @@ function buildTimeline() {
                 document.getElementById("js-download-btn").addEventListener("click", () => {
                     const dataText = GLOBAL_DATA.experimentLog.join("\n");
                     const timestamp = new Date().toLocaleString().replace(/[:/ ]/g, "-");
-                    const fileName = `${GLOBAL_DATA.subjectName}_Data_exp2_${timestamp}.txt`;
+                    const fileName = `${GLOBAL_DATA.subjectName}_实验数据_3B_${timestamp}.txt`;
                     
                     if (downloadData(dataText, fileName)) {
-                        statusDiv.textContent = "✓ Data download successful!";
+                        statusDiv.textContent = "✓ 数据下载成功！";
                         statusDiv.style.color = "#28a745";
                         // 清除本地备份
                         localStorage.removeItem('experiment_backup');
                     } else {
-                        statusDiv.textContent = "⚠ Auto-download failed. Data shown in a new window for copying.";
+                        statusDiv.textContent = "⚠ 自动下载失败，已在新窗口显示数据供复制";
                         statusDiv.style.color = "#ffc107";
                     }
                 });
