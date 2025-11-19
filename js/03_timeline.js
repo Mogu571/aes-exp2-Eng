@@ -229,7 +229,7 @@ function buildTimeline() {
             type: jsPsychImageKeyboardResponse,
             stimulus: currentImage.imageUrl,
             choices: "NO_KEYS",  // 初始禁用所有按键
-            prompt: `<div id="image-prompt" style="text-align: center; margin-top: 20px; color: #ffffff; font-size: 16px; visibility: hidden;">按 <kbd style="background: #ffffff; color: #333;">空格键</kbd> 开始评价</div>`,
+            prompt: `<div id="image-prompt" style="text-align: center; margin-top: 20px; color: #ffffff; font-size: 16px; visibility: hidden;">Press <kbd style="background: #ffffff; color: #333;">Space</kbd> to start the evaluation</div>`,
             stimulus_height: 500,
             stimulus_width: 800,
             trial_duration: 3000,  // 3秒后自动结束此试次
@@ -300,7 +300,7 @@ function buildTimeline() {
                 document.getElementById("js-download-btn").addEventListener("click", () => {
                     const dataText = GLOBAL_DATA.experimentLog.join("\n");
                     const timestamp = new Date().toLocaleString().replace(/[:/ ]/g, "-");
-                    const fileName = `${GLOBAL_DATA.subjectName}_实验数据_3B_${timestamp}.txt`;
+                    const fileName = `${GLOBAL_DATA.subjectName}_Data_exp2_${timestamp}.txt`;
                     
                     if (downloadData(dataText, fileName)) {
                         statusDiv.textContent = "✓ Data download successful!";
