@@ -255,7 +255,7 @@ function buildTimeline() {
         stimulus: `
             <div style="text-align: center; margin-top: 60px;">
                 <img src="instruction.png" style="max-width: 900px; width: 100%; height: auto; border-radius: 15px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);">
-                <p style="margin-top: 32px; font-size: 18px; color: #007cba;">Press the <kbd>Spacebar</kbd> to start the experiment.</p>
+                <p style="margin-top: 32px; font-size: 18px; color: #007cba;">Press the <kbd>Space</kbd> to start the experiment.</p>
             </div>
         `,
         choices: [" "],
